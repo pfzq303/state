@@ -11,9 +11,41 @@ console.warn = function(...)
     print("State Warn:" , ...)
 end
 console.printTable = function(...)
-    print( printTable(...))
+    dump(...)
 end
 StateLua.console = console
+
+-- cocos的isKindof有bug 修复如下：
+local iskindof_
+iskindof_ = function(cls, name)
+    local __index = rawget(cls, "__index")
+    if type(__index) == "table" and rawget(__index, "__cname") == name then return true end
+
+    if rawget(cls, "__cname") == name then return true end
+    local __supers = rawget(cls, "__supers") or (__index and rawget(__index, "__supers"))
+    if not __supers then return false end
+    for _, super in ipairs(__supers) do
+        if iskindof_(super, name) then return true end
+    end
+    return false
+end
+
+local function iskindof(obj, classname)
+    local t = type(obj)
+    if t ~= "table" and t ~= "userdata" then return false end
+
+    local mt
+    if t == "userdata" then
+        if tolua.iskindof(obj, classname) then return true end
+        mt = tolua.getpeer(obj)
+    else
+        mt = getmetatable(obj)
+    end
+    if mt then
+        return iskindof_(mt, classname)
+    end
+    return false
+end
 
 ---------------------common function--------------------------
 -- look for else transitins from a junction or choice
